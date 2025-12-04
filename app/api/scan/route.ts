@@ -3,6 +3,7 @@
 export const runtime = "nodejs";
 
 import { buildPrompt } from "@/lib/prompt";
+import { cleanJSON } from "@/utils/clean";
 import mammoth from "mammoth";
 import { NextResponse } from "next/server";
 
@@ -96,7 +97,7 @@ export async function POST(req: Request) {
 
     let parsed;
     try {
-      parsed = JSON.parse(raw);
+      parsed = cleanJSON(raw);
     } catch (e) {
       parsed = { summary: raw, match_score: 0 };
     }
