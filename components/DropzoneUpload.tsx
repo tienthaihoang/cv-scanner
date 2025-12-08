@@ -1,5 +1,6 @@
 "use client";
 
+import { FileText, Upload } from "lucide-react";
 import { useCallback, useState } from "react";
 import { FileRejection, useDropzone } from "react-dropzone";
 
@@ -9,6 +10,8 @@ interface DropzoneUploadProps {
   file?: File | null;
   label?: string;
   removable?: boolean;
+  accentColor?: "blue" | "purple";
+  onUseSample?: () => void;
 }
 
 export default function DropzoneUpload({
@@ -17,11 +20,20 @@ export default function DropzoneUpload({
   file,
   label = "Upload file",
   removable = false,
+  accentColor = "blue",
+  onUseSample,
 }: DropzoneUploadProps) {
   const [preview, setPreview] = useState<string | null>(
     file ? file.name : null
   );
   const [error, setError] = useState<string | null>(null);
+
+  const bgColor =
+    accentColor === "blue" ? "bg-blue-900/20" : "bg-purple-900/20";
+  const borderColorActive =
+    accentColor === "blue" ? "border-blue-500" : "border-purple-500";
+  const textColor =
+    accentColor === "blue" ? "text-blue-400" : "text-purple-400";
 
   const mimeAccept = {
     "application/pdf": [".pdf"],
@@ -56,46 +68,73 @@ export default function DropzoneUpload({
     onDrop,
     multiple: false,
     accept: mimeAccept,
+    disabled: loading,
   });
 
-  const handleRemove = () => {
+  const handleRemove = (e: React.MouseEvent) => {
+    e.stopPropagation();
     onSubmit(null);
     setPreview(null);
     setError(null);
   };
 
   return (
-    <div
-      {...getRootProps()}
-      className={`border-dashed border-2 p-4 rounded cursor-pointer ${
-        isDragActive ? "border-blue-500" : "border-gray-300"
-      }`}
-    >
-      <input {...getInputProps()} />
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium mb-1">{label}</p>
-          {preview ? (
-            <p className="text-gray-700">{preview}</p>
-          ) : (
-            <p className="text-gray-400">
-              Drag & drop file here, or click to select
-            </p>
-          )}
-          {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
-        </div>
-        {removable && preview && (
-          <button
-            type="button"
-            onClick={handleRemove}
-            className="text-red-500 text-sm font-medium hover:underline"
+    <div>
+      <div
+        {...getRootProps()}
+        className={`border-2 border-dashed p-5 rounded-lg cursor-pointer transition-all ${
+          isDragActive ? borderColorActive : "border-gray-700"
+        } ${bgColor} hover:border-gray-600 ${
+          loading ? "opacity-50 cursor-not-allowed" : ""
+        }`}
+      >
+        <input {...getInputProps()} />
+        <div className="flex items-start gap-3">
+          <div
+            className={`p-2 rounded ${
+              accentColor === "blue" ? "bg-blue-500/10" : "bg-purple-500/10"
+            }`}
           >
-            Remove
-          </button>
-        )}
+            {preview ? (
+              <FileText className={`w-5 h-5 ${textColor}`} />
+            ) : (
+              <Upload className={`w-5 h-5 ${textColor}`} />
+            )}
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-gray-200 mb-1">{label}</p>
+            {preview ? (
+              <p className="text-sm text-gray-300 font-medium">{preview}</p>
+            ) : (
+              <p className="text-xs text-gray-400">
+                Drag & drop file here, or click to select
+              </p>
+            )}
+            {error && <p className="text-xs text-red-400 mt-2">{error}</p>}
+            {loading && (
+              <p className="text-xs text-gray-500 mt-2">
+                Uploading / Processing...
+              </p>
+            )}
+          </div>
+          {removable && preview && (
+            <button
+              type="button"
+              onClick={handleRemove}
+              className="text-red-400 text-xs font-medium hover:text-red-300 transition-colors"
+            >
+              Remove
+            </button>
+          )}
+        </div>
       </div>
-      {loading && (
-        <p className="text-xs text-gray-500 mt-2">Uploading / Processing...</p>
+      {onUseSample && !preview && (
+        <button
+          onClick={onUseSample}
+          className={`mt-2 text-xs ${textColor} hover:underline cursor-pointer transition-colors`}
+        >
+          Use sample {label.toLowerCase()}
+        </button>
       )}
     </div>
   );
