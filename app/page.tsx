@@ -2,21 +2,20 @@
 
 "use client";
 
-import ApiKeyInput from "@/components/ApiKeyInput";
+import DetailedSectionCard from "@/components/DetailSectionCard";
 import DropzoneUpload from "@/components/DropzoneUpload";
-import ResultsCard from "@/components/ResultsCard";
+import FullPageLoader from "@/components/Loading";
+import OverallCard from "@/components/OverallCard";
 import ToastContainer from "@/components/ToastContainer";
 import { toast } from "@/lib/useToast";
 import { FileText } from "lucide-react";
 import { useState } from "react";
 
 export default function Page() {
-  const [openAiKey, setOpenAiKey] = useState("");
   const [cvFile, setCvFile] = useState<File | null>(null);
   const [jdFile, setJdFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
-  const [history, setHistory] = useState<any[]>([]);
 
   const onAnalyze = async () => {
     if (!cvFile) {
@@ -27,34 +26,20 @@ export default function Page() {
       toast.warning("Please attach a JD file.");
       return;
     }
-    if (!openAiKey) {
-      toast.warning("Please enter your OpenAI API key.");
-      return;
-    }
 
     setLoading(true);
     const form = new FormData();
     form.append("cv", cvFile);
     form.append("jd", jdFile);
-    form.append("openai_key", openAiKey);
 
     try {
       const res = await fetch("/api/scan", { method: "POST", body: form });
       const data = await res.json();
       if (!res.ok) throw data;
       setResult(data);
-      setHistory((prev) => [
-        {
-          id: Date.now(),
-          cvName: cvFile.name,
-          jdName: jdFile.name,
-          score: data.match_score,
-        },
-        ...prev,
-      ]);
-      toast.success(
-        `CV analyzed successfully! Match score: ${data.match_score}%`
-      );
+
+      const overallScore = data.overall?.match_score || data.match_score || 0;
+      toast.success(`CV analyzed successfully! Match score: ${overallScore}%`);
     } catch (err: any) {
       console.error(err);
       toast.error(err?.message || "Failed to analyze CV. Please try again.");
@@ -64,9 +49,11 @@ export default function Page() {
   };
 
   return (
-    <main className="min-h-screen p-6 bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800 text-gray-100">
+    <main className="min-h-screen p-6 bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800 text-gray-100 relative">
+      {loading && <FullPageLoader />}
       <ToastContainer />
-      <div className="max-w-5xl mx-auto">
+
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8 text-center">
           <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
@@ -76,9 +63,6 @@ export default function Page() {
             Upload a CV & JD to analyze matching score using AI
           </p>
         </div>
-
-        {/* API Key Section */}
-        <ApiKeyInput value={openAiKey} onChange={setOpenAiKey} />
 
         {/* File Upload Section */}
         <section className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -112,59 +96,65 @@ export default function Page() {
         </button>
 
         {/* Results Section */}
-        <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <h2 className="font-semibold mb-3 text-lg text-gray-200">
+        {result ? (
+          <div>
+            <h2 className="font-semibold mb-4 text-xl text-gray-200">
               Analysis Result
             </h2>
-            <ResultsCard result={result} />
-          </div>
+            <div className="space-y-6">
+              {/* Overall Summary */}
+              <OverallCard overall={result.overall} />
 
-          <div>
-            <h2 className="font-semibold mb-3 text-lg text-gray-200">
-              ATS History
-            </h2>
-            <div className="bg-gray-800/50 rounded-lg shadow-sm p-4 border border-gray-700">
-              {history.length === 0 ? (
-                <div className="text-center py-8">
-                  <FileText className="w-10 h-10 text-gray-600 mx-auto mb-3" />
-                  <p className="text-sm text-gray-400">
-                    No scans yet. Your past analysis will appear here.
-                  </p>
-                </div>
-              ) : (
-                <ul className="space-y-2">
-                  {history.map((item) => (
-                    <li
-                      key={item.id}
-                      className="py-3 px-2 border-b border-gray-700 last:border-b-0 hover:bg-gray-700/30 rounded transition-colors"
-                    >
-                      <div className="flex justify-between items-start mb-1">
-                        <div className="flex-1 text-xs text-gray-400 truncate pr-2">
-                          {item.cvName}
-                        </div>
-                        <div
-                          className={`font-bold text-sm ${
-                            item.score >= 80
-                              ? "text-green-400"
-                              : item.score >= 60
-                              ? "text-yellow-400"
-                              : "text-red-400"
-                          }`}
-                        >
-                          {item.score}%
-                        </div>
-                      </div>
-                      <div className="text-xs text-gray-500 truncate">
-                        {item.jdName}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              {/* Detailed Sections */}
+              <DetailedSectionCard
+                title="Experience"
+                data={result.experience}
+              />
+
+              <DetailedSectionCard title="Skills" data={result.skills} />
+
+              <DetailedSectionCard
+                title="Position & Title"
+                data={result.position_title}
+              />
+
+              <DetailedSectionCard title="Education" data={result.education} />
+
+              {/* Keywords */}
+              {result.highlighted_keywords &&
+                result.highlighted_keywords.length > 0 && (
+                  <div className="bg-gray-800/50 rounded-lg shadow-sm p-6 border border-gray-700">
+                    <h3 className="text-sm font-semibold text-gray-200 mb-3">
+                      Key ATS Keywords
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {result.highlighted_keywords.map(
+                        (keyword: string, i: number) => (
+                          <span
+                            key={i}
+                            className="px-3 py-1 bg-blue-500/20 text-blue-400 text-xs rounded-full border border-blue-500/30"
+                          >
+                            {keyword}
+                          </span>
+                        )
+                      )}
+                    </div>
+                  </div>
+                )}
             </div>
           </div>
-        </section>
+        ) : (
+          <div className="p-12 rounded-lg shadow-sm bg-gray-800/50 border border-gray-700 text-center">
+            <div className="flex flex-col items-center justify-center">
+              <FileText className="w-16 h-16 text-gray-600 mb-4" />
+              <p className="text-lg text-gray-300 mb-2">No Analysis Yet</p>
+              <p className="text-sm text-gray-400">
+                Upload a CV + JD and click Analyze to see the matching score
+                here.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );
